@@ -16,10 +16,11 @@ while True:
     # Hand results
     results = hands.process(img_RBG)
 
-    # location of individual hands
+    # Location of individual hands
     if results.multi_hand_landmarks:
-        for h in results.multi_hand_landmarks:
-            mp_draw.draw_landmarks(img, h)
+        for hand in results.multi_hand_landmarks:
+            # Draw hand onto image (img, points, connections)
+            mp_draw.draw_landmarks(img, hand, mp_hands.HAND_CONNECTIONS)
 
     cv.imshow("Image", img)
     cv.waitKey(1)
