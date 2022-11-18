@@ -12,7 +12,7 @@ video = cv.VideoCapture(0)
 #manipulator = ump.get_device(1)
 
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(max_num_hands=1) # less hands = higher fps
+hands = mp_hands.Hands(max_num_hands=4) # less hands = higher fps
 mp_draw = mp.solutions.drawing_utils
 
 previous_time = 0
@@ -62,13 +62,14 @@ while True:
 
                     # move robot
                     np.multiply(robot_pos[:3], (np.subtract(1, pos_diff)), robot_pos_new)
-                    #manipulator.goto_pos(robot_new_pos, speed=1500)
-                    print(robot_pos)
+                    move_to = np.append(robot_pos_new, 9999.90625)
+                    #manipulator.goto_pos(move_to, speed=2000)
+                    print(move_to)
                     robot_pos = robot_pos_new
             
 
             # Draw entire hand onto image (img, points, connections)
-            # mp_draw.draw_landmarks(img, hand)
+            mp_draw.draw_landmarks(img, hand, mp_hands.HAND_CONNECTIONS)
 
 
     '''
