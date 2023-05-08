@@ -52,7 +52,6 @@ def main():
     mp_drawing_styles = mp.solutions.drawing_styles
     hand_numbers = [8] # index finger range from 5-8
 
-    # traiangulation 
     # Projection matrices
     P0 = get_projection_matrix(0)
     P1 = get_projection_matrix(1)
@@ -62,15 +61,19 @@ def main():
     arucoDict = cv.aruco.Dictionary_get(ARUCO_DICT[aruco_type])
     arucoParams = cv.aruco.DetectorParameters_create()
 
+    # traiangulation 
     kpts_camL = []
     kpts_camR = []
     kpts_3d = []
 
+    landmark_w = 0
+    landmark_h = 0
     vx = 0
     vy = 0
 
     data1 = []
     data2 = []
+    data3 = []
 
     np.set_printoptions(precision=3)
 
@@ -99,6 +102,8 @@ def main():
     # pass all the parameters into the UKF!
     # number of state variables, process noise, initial state, initial covariance, alpha, kappa, beta, iterate function
     state_estimator = UKF(9, q, np.zeros(9), 0.0001*np.eye(9), 0.1, 0.0, 2.0, iterate_x)
+    state_estimator1 = UKF(9, q, np.zeros(9), 0.0001*np.eye(9), 0.2, 0.0, 2.0, iterate_x)
+    state_estimator2 = UKF(9, q, np.zeros(9), 0.0001*np.eye(9), 0.5, 0.0, 2.0, iterate_x)
 
     while True:
         success, img = video.read()
@@ -167,22 +172,30 @@ def main():
 
             d_time = 0.1
             state_estimator.predict(d_time)
+            state_estimator1.predict(d_time)
+            state_estimator2.predict(d_time)
 
             #plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.P[0:2, 0:2], std=6, facecolor='k', alpha=0.3)
 
             state_estimator.update([0,1,2], cam_data, r_cam)
             state_estimator.update([3,4,5], imu_v_data, r_imu)
             state_estimator.update([6,7,8], imu_a_data, r_imu)
+            state_estimator1.update([0,1,2], cam_data, r_cam)
+            state_estimator1.update([3,4,5], imu_v_data, r_imu)
+            state_estimator1.update([6,7,8], imu_a_data, r_imu)
+            state_estimator2.update([0,1,2], cam_data, r_cam)
+            state_estimator2.update([3,4,5], imu_v_data, r_imu)
+            state_estimator2.update([6,7,8], imu_a_data, r_imu)
 
             x1, y1, z1, vx1, vy1, vz1, ax1, ay1, az1 = state_estimator.get_state()
+            x1_1, y1_1, z1_1, vx1, vy1, vz1, ax1, ay1, az1 = state_estimator1.get_state()
+            x2_1, y2_1, z2_1, vx2, vy2, vz2, ax2, ay2, az2 = state_estimator2.get_state()
 
-            print("Estimated state: ", state_estimator.get_state())
-            data1.append([x3d, y3d, z3d])
+            data3.append([float(x2_1), float(y2_1), float(z2_1)])
             data2.append([float(x1), float(y1), float(z1)])
+            data1.append([float(x1_1), float(y1_1), float(z1_1)])
 
-            #cv.circle(img, (int(x1), int(y1)), 5, (255, 255, 0), 1)
-            plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.P[0:2, 0:2], std=6, facecolor='k', alpha=0.3)
-            #plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.p[0:2, 0:2], std=6, facecolor='g', alpha=0.8)           
+            #plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.P[0:2, 0:2], std=6, facecolor='g', alpha=0.8)           
             
         # Show everything
         cv.imshow("Image", img)
@@ -196,32 +209,57 @@ def main():
 
     data1 = np.array(data1)
     data2 = np.array(data2)
+    data3 = np.array(data3)
 
-    x, y, z = data1[:, 0], data1[:, 1], data1[:, 2]
-    px, py, pz = data2[:, 0], data2[:, 1], data2[:, 2]
+    x, y, z = data1[20:, 0], data1[20:, 1], data1[20:, 2]
+    px, py, pz = data2[20:, 0], data2[20:, 1], data2[20:, 2]
+    dx, dy, dz = data3[20:, 0], data3[20:, 1], data3[20:, 2]
+
+    # plt.plot(data2[20:,0], data2[20:,1], label="q=0.1", color='g')
+    # plt.plot(data1[20:,0], data1[20:,1], label="q=0.01", color='b')
+    # plt.plot(data3[20:,0], data3[20:,1], label="q=0.001", color='r')
 
     fig = plt.figure()
 
-    ax = fig.add_subplot(1, 2, 1, projection='3d')
+    ax = fig.add_subplot(1, 3, 1, projection='3d')
     ax.plot3D(x, y, z, 'r-')
-    ax.set_title("Without Kalman Filter")
+    ax.set_title("a = 0.1")
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
 
-    ax = fig.add_subplot(1, 2, 2, projection='3d')
-    ax.set_title("With Unscented Kalman Filter")
+    ax = plt.gca()
+    ax.set_zlim(ax.get_zlim()[::-1])
+    ax.set_ylim(ax.get_ylim()[::-1])
+
+    ax = fig.add_subplot(1, 3, 2, projection='3d')
+    ax.plot3D(dx, dy, dz, 'b-')
+    ax.set_title("a = 0.2")
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    ax = plt.gca()
+    ax.set_zlim(ax.get_zlim()[::-1])
+    ax.set_ylim(ax.get_ylim()[::-1])
+
+    ax = fig.add_subplot(1, 3, 3, projection='3d')
+    ax.set_title("a = 0.5")
     ax.plot3D(px, py, pz, 'g-')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
 
-    data1 = pd.DataFrame(data1)
-    data2 = pd.DataFrame(data2)
-    data2.to_csv('ufk_3d.csv')
-    data1.to_csv('no_ufk_3d.csv')
+    ax = plt.gca()
+    ax.set_zlim(ax.get_zlim()[::-1])
+    ax.set_ylim(ax.get_ylim()[::-1])
 
     plt.show()
+
+    # data1 = pd.DataFrame(data1)
+    # data2 = pd.DataFrame(data2)
+    # data2.to_csv('ufk_3d_1.csv')
+    # data1.to_csv('no_ufk_3d.csv')
 
 if __name__ == "__main__":
     

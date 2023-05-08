@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import cv2 as cv
 import numpy as np
-import mediapipe as mp
 import matplotlib.pyplot as plt
 import serial.tools.list_ports
 from filters.ukf import UKF
@@ -11,6 +10,7 @@ from DLT import *
 from readCamParams import *
 from aruco.arucoDetect import *
 import pandas as pd
+from sensapex import UMP
 
 def iterate_x(x_in, timestep, inputs):
     '''this function is based on the x_dot and can be nonlinear as needed'''
@@ -29,6 +29,16 @@ def iterate_x(x_in, timestep, inputs):
 
 def main():
 
+    # robot
+    ump = UMP.get_ump()
+    dev_ids = ump.list_devices()
+    manipulator = ump.get_device(1)
+    # robot position (calibrated 0)
+    robot_pos = np.array([9999.8818359375, 9999.986328125, 9999.9501953125])
+    robot_pos_new = np.array([9999.8818359375, 9999.986328125, 9999.9501953125])
+    manipulator.goto_pos(np.append(robot_pos, 9999.90625), speed=4000)
+    print("robot calibrated")
+
     # IMU
     ports = serial.tools.list_ports.comports()
     serialInst = serial.Serial()
@@ -45,29 +55,19 @@ def main():
     serialInst.open()
 
     # CAM
-    video = cv.VideoCapture(1)
-    mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(max_num_hands=1) # less hands = higher fps
-    mp_draw = mp.solutions.drawing_utils
-    mp_drawing_styles = mp.solutions.drawing_styles
-    hand_numbers = [8] # index finger range from 5-8
+    video = cv.VideoCapture(2)
 
-    # traiangulation 
     # Projection matrices
     P0 = get_projection_matrix(0)
     P1 = get_projection_matrix(1)
     intr0, dist0 = read_camera_parameters(0)
     intr1, dist1 = read_camera_parameters(1)
     aruco_type = "DICT_5X5_250"
-    arucoDict = cv.aruco.Dictionary_get(ARUCO_DICT[aruco_type])
-    arucoParams = cv.aruco.DetectorParameters_create()
 
+    # traiangulation 
     kpts_camL = []
     kpts_camR = []
     kpts_3d = []
-
-    vx = 0
-    vy = 0
 
     data1 = []
     data2 = []
@@ -100,6 +100,9 @@ def main():
     # number of state variables, process noise, initial state, initial covariance, alpha, kappa, beta, iterate function
     state_estimator = UKF(9, q, np.zeros(9), 0.0001*np.eye(9), 0.1, 0.0, 2.0, iterate_x)
 
+    previous_pos = [0.5, 0.5, 0]
+    current_pos = [0.5, 0.5, 0]
+
     while True:
         success, img = video.read()
         if not success: break
@@ -127,7 +130,6 @@ def main():
                     _p3d = DLT(P0, P1, uv1, uv2) #calculate 3d position of keypoint
                 frame_p3ds.append(_p3d)
         
-            frame_p3ds = np.array(frame_p3ds[0]).reshape((len(hand_numbers), 3))
             kpts_3d.append(frame_p3ds)
             x3d, y3d, z3d = frame_p3ds[0]
             coord_str = "(%.2f %.2f %.2f)" % (x3d, y3d, z3d)
@@ -168,25 +170,32 @@ def main():
             d_time = 0.1
             state_estimator.predict(d_time)
 
-            #plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.P[0:2, 0:2], std=6, facecolor='k', alpha=0.3)
-
             state_estimator.update([0,1,2], cam_data, r_cam)
             state_estimator.update([3,4,5], imu_v_data, r_imu)
             state_estimator.update([6,7,8], imu_a_data, r_imu)
 
             x1, y1, z1, vx1, vy1, vz1, ax1, ay1, az1 = state_estimator.get_state()
 
-            print("Estimated state: ", state_estimator.get_state())
+            #print("Estimated state: ", state_estimator.get_state())
+            current_pos = [x1*0.4, 0.4*y1, z1*-0.1]
+            pos_diff = np.subtract(current_pos, previous_pos)
+            previous_pos = current_pos
+            np.multiply(robot_pos[:3], (np.subtract(1, pos_diff)), robot_pos_new)
+            move_to = np.append(robot_pos_new, 9999.90625)
+            
+            # move robot
+            manipulator.goto_pos(move_to, speed=2000)
+            robot_pos = robot_pos_new
+
+            print(current_pos)
+
             data1.append([x3d, y3d, z3d])
             data2.append([float(x1), float(y1), float(z1)])
-
-            #cv.circle(img, (int(x1), int(y1)), 5, (255, 255, 0), 1)
-            plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.P[0:2, 0:2], std=6, facecolor='k', alpha=0.3)
-            #plot_covariance((state_estimator.x[0], state_estimator.x[1]), state_estimator.p[0:2, 0:2], std=6, facecolor='g', alpha=0.8)           
-            
+           
         # Show everything
         cv.imshow("Image", img)
         key = cv.waitKey(1)
+
         # If q entered whole process will stop
         if key == ord('q'):
             serialInst.close()
@@ -216,10 +225,9 @@ def main():
     ax.set_ylabel('y')
     ax.set_zlabel('z')
 
-    data1 = pd.DataFrame(data1)
-    data2 = pd.DataFrame(data2)
-    data2.to_csv('ufk_3d.csv')
-    data1.to_csv('no_ufk_3d.csv')
+    ax = plt.gca()
+    ax.set_zlim(ax.get_zlim()[::-1])
+    ax.set_ylim(ax.get_ylim()[::-1])
 
     plt.show()
 

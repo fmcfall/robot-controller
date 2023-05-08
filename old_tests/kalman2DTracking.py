@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 import mediapipe as mp
 import time
-from kf2D import KalmanFilter
+from filters.kf2D import KalmanFilter
 import matplotlib.pyplot as plt
 import serial.tools.list_ports
 import pandas as pd
