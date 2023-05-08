@@ -2,7 +2,7 @@
 
 This reporsitory contains the files used for my final year project, in which I designed a Wearable Controller for Robot-Assisted Microsurgery.
 
-The folders contain the following files:
+Description of the folders and files:
 - filters:
   - kf.py - kalman filter class
   - ekf.py - extended kalman filter class
@@ -10,10 +10,13 @@ The folders contain the following files:
 - tests:
   - implementations of all filters
   - test files used for the results
+  - implementation of robot control using ArUco UKF method
 - old tests:
   - individual filter testing files
 - aruco:
   - aruco generation and detection scripts
+- simulation:
+  - UR5 simulation using ArUco UKF method
 
 The video of the code running using micromanipulator is found at:
 https://youtu.be/066_cpsxXQU
