@@ -9,7 +9,7 @@ import numpy as np
 from filterpy.stats import plot_covariance
 from DLT import *
 from readCamParams import *
-from arucoDetect import *
+from aruco.arucoDetect import *
 import pandas as pd
 from kf3D import KalmanFilter
 from ekf import ExtendedKalmanFilter
