@@ -2,17 +2,18 @@
 
 This reporsitory contains the files used for my final year project, in which I designed a Wearable Controller for Robot-Assisted Microsurgery.
 
-The important files are:
-- kf.py - kalman filter class
-- ekf.py - extended kalman filter class
-- ukf.py - unscented kalman filter class
-
-The filters with aruco or hands are the full pipeline scripts to be run with all the correct attachments:
-- stereo camera
-- imu
-
-robot_test.py tests and controls the robot
-run_all.py/run_all_mp.py runs every filter for compairson
+The folders contain the following files:
+- filters:
+  - kf.py - kalman filter class
+  - ekf.py - extended kalman filter class
+  - ukf.py - unscented kalman filter class
+- tests:
+  - implementations of all filters
+  - test files used for the results
+- old tests:
+  - individual filter testing files
+- aruco:
+  - aruco generation and detection scripts
 
 The video of the code running using micromanipulator is found at:
 https://youtu.be/066_cpsxXQU
