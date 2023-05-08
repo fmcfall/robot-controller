@@ -21,4 +21,4 @@ https://youtu.be/066_cpsxXQU
 The corresonding video of the wearable leader controller is found at:
 https://youtube.com/shorts/YFJpbKTj-bY?feature=share
 
-Thank you.
+Thank you and enjoy!
