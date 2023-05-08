@@ -96,8 +96,7 @@ def main():
     r_imu[1][1] = 0.01
     r_imu[2][2] = 0.01
 
-    # pass all the parameters into the UKF!
-    # number of state variables, process noise, initial state, initial covariance, alpha, kappa, beta, iterate function
+    # ukf
     state_estimator = UKF(9, q, np.zeros(9), 0.0001*np.eye(9), 0.1, 0.0, 2.0, iterate_x)
 
     previous_pos = [0.5, 0.5, 0]
